@@ -17,7 +17,8 @@ import json
 from dotenv import load_dotenv
 
 
-load_dotenv()
+load_dotenv(dotenv_path=".env")
+
 # 🔹 Optional: Ngrok setup
 try:
     import nest_asyncio
@@ -308,17 +309,19 @@ If an image is provided, describe its likely contents. If only a message is prov
                 }
         
         # General response for unmatched queries
+# General response for unmatched queries
         response = f"""
-🤖 **I received your query:** "{message}"
+🤖 **Your message:** "{message}"
 
-I can help you with:
-- 📷 **Image Analysis** - Upload photos of medication packaging
-- 💊 **Drug Information** - Details about medications and interactions
-- 🩺 **Symptom Guidance** - Information about common health concerns
-- ⚕️ **OTC Recommendations** - Over-the-counter treatment options
+I'm here to assist you with the following:
+- 📷 **Image Analysis** – Upload images of medication packaging for identification.
+- 💊 **Drug Information** – Get detailed insights on medicines, including interactions.
+- 🩺 **Symptom Guidance** – Learn about common symptoms and possible causes.
+- ⚕️ **OTC Recommendations** – Discover suitable over-the-counter treatment options.
 
-Please provide more specific information or upload an image for better assistance.
+To help you better, please provide more specific details or upload an image.
 """
+
         return {
             "response": response,
             "confidence": 0.6,
@@ -407,19 +410,24 @@ async def chat(message: ChatMessage):
 
 
 # 🔹 Run App + Auto Ngrok
+# if __name__ == "__main__":
+#     try:
+#         if NGROK_AVAILABLE:
+#             conf.get_default().auth_token=os.getenv("auth_token")
+#             public_url = ngrok.connect(8000)
+#             print(f"🚀 MediBot is live at: {public_url}")
+#             print(f"📚 API Docs: {public_url}/docs")
+#             with open("api_url.json", "w") as f:
+#                 json.dump({"url": str(public_url)}, f)
+#         import uvicorn
+#         uvicorn.run(app, host="0.0.0.0", port=8000)
+#     except Exception as e:
+#         logger.error(f"Ngrok/launch error: {str(e)}")
+
 if __name__ == "__main__":
-    try:
-        if NGROK_AVAILABLE:
-            conf.get_default().auth_token=os.getenv("auth_token")
-            public_url = ngrok.connect(8000)
-            print(f"🚀 MediBot is live at: {public_url}")
-            print(f"📚 API Docs: {public_url}/docs")
-            with open("api_url.json", "w") as f:
-                json.dump({"url": str(public_url)}, f)
-        import uvicorn
-        uvicorn.run(app, host="0.0.0.0", port=8000)
-    except Exception as e:
-        logger.error(f"Ngrok/launch error: {str(e)}")
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
 
 
