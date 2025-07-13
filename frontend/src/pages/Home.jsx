@@ -18,7 +18,8 @@ import axios from "axios";
 
 
 const MediBotUI = () => {
-  const [API_BASE_URL, setAPIBaseUrl] = useState("");
+  // const [API_BASE_URL, setAPIBaseUrl] = useState("");
+  const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -32,53 +33,89 @@ const MediBotUI = () => {
   const textareaRef = useRef(null);
 
 
-  // ✅ 1. Get and extract ngrok URL
-  useEffect(() => {
-    const fetchApiUrl = async () => {
-      try {
-        const res = await fetch("http://localhost:8000/get-ngrok-url");
-        const data = await res.json();
-        const match = data.url.match(/https:\/\/[a-zA-Z0-9\-]+\.ngrok-free\.app/);
-        const extractedUrl = match ? match[0] : "";
-        if (extractedUrl) {
-          console.log("✅ Extracted backend URL:", extractedUrl);
-          setAPIBaseUrl(extractedUrl);
-        } else {
-          console.error("❌ Could not extract valid ngrok URL from:", data.url);
-        }
-      } catch (err) {
-        console.error("❌ Failed to fetch backend URL:", err);
-      }
-    };
+  // // ✅ 1. Get and extract ngrok URL
+  // useEffect(() => {
+  //   const fetchApiUrl = async () => {
+  //     try {
+  //       const res = await fetch("http://localhost:8000/get-ngrok-url");
+  //       const data = await res.json();
+  //       const match = data.url.match(/https:\/\/[a-zA-Z0-9\-]+\.ngrok-free\.app/);
+  //       const extractedUrl = match ? match[0] : "";
+  //       if (extractedUrl) {
+  //         console.log("✅ Extracted backend URL:", extractedUrl);
+  //         setAPIBaseUrl(extractedUrl);
+  //       } else {
+  //         console.error("❌ Could not extract valid ngrok URL from:", data.url);
+  //       }
+  //     } catch (err) {
+  //       console.error("❌ Failed to fetch backend URL:", err);
+  //     }
+  //   };
 
-    fetchApiUrl();
-  }, []);
+  //   fetchApiUrl();
+  // }, []);
 
   // ✅ 2. After URL is set → check API health + set welcome message
+  //   useEffect(() => {
+  //     const checkApiAndWelcome = async () => {
+  //       if (!API_BASE_URL) return;
+  //       try {
+  //         const res = await axios.get(`${API_BASE_URL}/health`);
+  //         setApiConfigured(res.data.google_ai_configured);
+  //         console.log("✅ API health check passed");
+
+  //         // ✅ Set bot welcome message only after API is ready
+  //         setMessages([
+  //           {
+  //             id: 1,
+  //             text: `🏥 **Welcome to MediBot!**
+
+  // I'm your AI health assistant. Here's how I can help:
+
+  // 📷 Upload a medication image for analysis
+  // 💊 Ask about drug info, side effects, or interactions
+  // 🩺 Get symptom-based guidance
+  // ⚕️ Receive OTC suggestions
+
+  // 💬 Type your question or upload a photo to get started!
+
+  // *Note: Always consult a doctor for medical advice.*`,
+  //             sender: "bot",
+  //             timestamp: new Date(),
+  //             medicationInfo: null,
+  //           },
+  //         ]);
+  //       } catch (err) {
+  //         console.error("❌ API health check failed:", err);
+  //       }
+  //     };
+
+  //     checkApiAndWelcome();
+  //   }, [API_BASE_URL]);
+
+
   useEffect(() => {
     const checkApiAndWelcome = async () => {
-      if (!API_BASE_URL) return;
       try {
         const res = await axios.get(`${API_BASE_URL}/health`);
         setApiConfigured(res.data.google_ai_configured);
         console.log("✅ API health check passed");
 
-        // ✅ Set bot welcome message only after API is ready
         setMessages([
           {
             id: 1,
-            text: `🏥 **Welcome to MediBot!**
+            text: `🏥 **🏥 **Welcome to MediBot!**
 
-I'm your AI health assistant. Here's how I can help:
+  I'm your AI health assistant. Here's how I can help:
 
-📷 Upload a medication image for analysis  
-💊 Ask about drug info, side effects, or interactions  
-🩺 Get symptom-based guidance  
-⚕️ Receive OTC suggestions
+  📷 Upload a medication image for analysis
+  💊 Ask about drug info, side effects, or interactions
+  🩺 Get symptom-based guidance
+  ⚕️ Receive OTC suggestions
 
-💬 Type your question or upload a photo to get started!
+  💬 Type your question or upload a photo to get started!
 
-*Note: Always consult a doctor for medical advice.*`,
+  *Note: Always consult a doctor for medical advice.*`,
             sender: "bot",
             timestamp: new Date(),
             medicationInfo: null,
@@ -90,7 +127,7 @@ I'm your AI health assistant. Here's how I can help:
     };
 
     checkApiAndWelcome();
-  }, [API_BASE_URL]);
+  }, []);
 
 
   const scrollToBottom = () => {
