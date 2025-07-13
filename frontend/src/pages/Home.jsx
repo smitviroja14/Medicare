@@ -32,7 +32,7 @@ const MediBotUI = () => {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
-
+  // for loclhost
   // // ✅ 1. Get and extract ngrok URL
   // useEffect(() => {
   //   const fetchApiUrl = async () => {
@@ -93,7 +93,7 @@ const MediBotUI = () => {
   //     checkApiAndWelcome();
   //   }, [API_BASE_URL]);
 
-
+  // for deploy on vercel
   useEffect(() => {
     const checkApiAndWelcome = async () => {
       try {
