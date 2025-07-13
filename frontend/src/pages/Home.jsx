@@ -13,12 +13,12 @@ import {
   AlertTriangle,
   Activity,
 } from "lucide-react";
+import { useUser } from "@clerk/clerk-react";
 import axios from "axios";
 
-// API Configuration
-const API_BASE_URL = "https://697c-34-168-13-157.ngrok-free.app";
 
 const MediBotUI = () => {
+  const [API_BASE_URL, setAPIBaseUrl] = useState("");
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -31,33 +31,67 @@ const MediBotUI = () => {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
-  // Check API health and add welcome message
+
+  // ✅ 1. Get and extract ngrok URL
   useEffect(() => {
-    checkApiHealth();
-    setMessages([
-      {
-        id: 1,
-        text: `🏥 **Welcome to MediBot!**
-      
-I'm your AI-powered medical information assistant. I can help you with:
+    const fetchApiUrl = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/get-ngrok-url");
+        const data = await res.json();
+        const match = data.url.match(/https:\/\/[a-zA-Z0-9\-]+\.ngrok-free\.app/);
+        const extractedUrl = match ? match[0] : "";
+        if (extractedUrl) {
+          console.log("✅ Extracted backend URL:", extractedUrl);
+          setAPIBaseUrl(extractedUrl);
+        } else {
+          console.error("❌ Could not extract valid ngrok URL from:", data.url);
+        }
+      } catch (err) {
+        console.error("❌ Failed to fetch backend URL:", err);
+      }
+    };
 
-📷 **Image Analysis** - Upload photos of medication packaging
-💊 **Drug Information** - Get details about medications and dosages  
-🩺 **Symptom Guidance** - Receive general advice for common health concerns
-⚕️ **OTC Recommendations** - Suggestions for over-the-counter options
-
-**How to get started:**
-1. Type your medical question in the chat
-2. Upload an image of medication packaging for analysis
-3. Ask about symptoms, side effects, or drug interactions
-
-What can I help you with today?`,
-        sender: "bot",
-        timestamp: new Date(),
-        medicationInfo: null,
-      },
-    ]);
+    fetchApiUrl();
   }, []);
+
+  // ✅ 2. After URL is set → check API health + set welcome message
+  useEffect(() => {
+    const checkApiAndWelcome = async () => {
+      if (!API_BASE_URL) return;
+      try {
+        const res = await axios.get(`${API_BASE_URL}/health`);
+        setApiConfigured(res.data.google_ai_configured);
+        console.log("✅ API health check passed");
+
+        // ✅ Set bot welcome message only after API is ready
+        setMessages([
+          {
+            id: 1,
+            text: `🏥 **Welcome to MediBot!**
+
+I'm your AI health assistant. Here's how I can help:
+
+📷 Upload a medication image for analysis  
+💊 Ask about drug info, side effects, or interactions  
+🩺 Get symptom-based guidance  
+⚕️ Receive OTC suggestions
+
+💬 Type your question or upload a photo to get started!
+
+*Note: Always consult a doctor for medical advice.*`,
+            sender: "bot",
+            timestamp: new Date(),
+            medicationInfo: null,
+          },
+        ]);
+      } catch (err) {
+        console.error("❌ API health check failed:", err);
+      }
+    };
+
+    checkApiAndWelcome();
+  }, [API_BASE_URL]);
+
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -67,24 +101,13 @@ What can I help you with today?`,
     scrollToBottom();
   }, [messages]);
 
-  const checkApiHealth = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/health`);
-      setApiConfigured(response.data.google_ai_configured);
-    } catch (error) {
-      console.error("API health check failed:", error);
-    }
-  };
-
-  const handleImageUpload = (event) => {
-    const file = event.target.files[0];
+  // 📷 Handle image upload
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
     if (file) {
       setSelectedImage(file);
-
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(e.target.result);
-      };
+      reader.onload = (e) => setImagePreview(e.target.result);
       reader.readAsDataURL(file);
     }
   };
@@ -99,6 +122,11 @@ What can I help you with today?`,
   };
 
   const handleSend = async () => {
+    if (!API_BASE_URL) {
+      console.warn("⚠️ API URL not yet loaded.");
+      return;
+    }
+
     if (!inputText.trim() && !selectedImage) return;
 
     const userMessage = {
@@ -135,13 +163,12 @@ What can I help you with today?`,
 
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("❌ Error sending message:", error);
 
       const errorMessage = {
         id: Date.now() + 1,
-        text: `❌ Sorry, I encountered an error: ${
-          error.response?.data?.detail || error.message
-        }. Please try again or check if the backend server is running.`,
+        text: `❌ Sorry, I encountered an error: ${error.response?.data?.detail || error.message
+          }. Please try again or check if the backend server is running.`,
         sender: "bot",
         timestamp: new Date(),
         isError: true,
@@ -157,6 +184,7 @@ What can I help you with today?`,
       }
     }
   };
+
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -185,47 +213,52 @@ What can I help you with today?`,
       .replace(/• /g, "&bull; ");
   };
 
+
   const MedicationInfoCard = ({ medicationInfo }) => {
     if (!medicationInfo) return null;
 
     return (
-      <div className="mt-3 p-4 bg-blue-900/30 border border-blue-700 rounded-lg">
-        <h4 className="text-sm font-semibold text-blue-300 mb-2">
+      <div className="mt-4 p-5 bg-blue-900/40 border border-blue-700 rounded-xl shadow-inner">
+        <h4 className="text-base font-semibold text-blue-300 mb-4 tracking-wide">
           📋 Medication Information
         </h4>
-        <div className="space-y-2 text-sm">
+
+        <div className="space-y-3 text-sm leading-relaxed text-gray-100">
+          {/* Name */}
           <div>
-            <span className="font-medium text-gray-300">Name:</span>
-            <span className="ml-2 text-gray-100">{medicationInfo.name}</span>
+            <span className="font-medium text-blue-200">🔹 Name:</span>
+            <span className="ml-2">{medicationInfo.name}</span>
           </div>
+
+          {/* Purpose */}
           {medicationInfo.purpose && (
             <div>
-              <span className="font-medium text-gray-300">Purpose:</span>
-              <span className="ml-2 text-gray-100">
-                {medicationInfo.purpose.substring(0, 200)}...
-              </span>
+              <span className="font-medium text-blue-200">🔸 Purpose:</span>
+              <span className="ml-2">{medicationInfo.purpose.substring(0, 200)}...</span>
             </div>
           )}
+
+          {/* Dosage */}
           {medicationInfo.dosage && (
             <div>
-              <span className="font-medium text-gray-300">Dosage:</span>
-              <span className="ml-2 text-gray-100">
-                {medicationInfo.dosage.substring(0, 200)}...
-              </span>
+              <span className="font-medium text-blue-200">💊 Dosage:</span>
+              <span className="ml-2">{medicationInfo.dosage.substring(0, 200)}...</span>
             </div>
           )}
+
+          {/* Warnings */}
           {medicationInfo.warnings && (
-            <div className="p-2 bg-red-900/30 border border-red-700 rounded">
+            <div className="p-3 bg-red-900/40 border border-red-700 rounded-lg text-sm">
               <span className="font-medium text-red-300">⚠️ Warnings:</span>
-              <span className="ml-2 text-red-100">
-                {medicationInfo.warnings.substring(0, 200)}...
-              </span>
+              <span className="ml-2 text-red-100">{medicationInfo.warnings.substring(0, 200)}...</span>
             </div>
           )}
         </div>
       </div>
     );
   };
+
+  const { user } = useUser();
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
@@ -248,19 +281,20 @@ What can I help you with today?`,
             ></div>
           )}
         </div>
-        <div className="flex items-center space-x-4">
-          <button className="px-4 py-2 text-sm bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors">
-            Log in
-          </button>
-          <button className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
-            Sign up for free
-          </button>
-          <button className="p-2 hover:bg-gray-800 rounded-lg transition-colors">
-            <div className="w-6 h-6 bg-gray-600 rounded-full flex items-center justify-center">
-              <span className="text-xs">?</span>
+
+        {/* 👤 User profile (Clerk) */}
+        {user && (
+          <div className="flex items-center space-x-3">
+            <img
+              src={user.imageUrl}
+              alt="User Avatar"
+              className="w-8 h-8 rounded-full border border-gray-600"
+            />
+            <div className="text-sm font-medium text-white">
+              {user.fullName || user.username || "User"}
             </div>
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Medical Disclaimer */}
@@ -322,22 +356,19 @@ What can I help you with today?`,
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`flex ${
-              message.sender === "user" ? "justify-end" : "justify-start"
-            }`}
+            className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"
+              }`}
           >
             <div
-              className={`flex items-start space-x-3 max-w-4xl ${
-                message.sender === "user"
-                  ? "flex-row-reverse space-x-reverse"
-                  : ""
-              }`}
+              className={`flex items-start space-x-3 max-w-4xl ${message.sender === "user"
+                ? "flex-row-reverse space-x-reverse"
+                : ""
+                }`}
             >
               {/* Avatar */}
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  message.sender === "bot" ? "bg-blue-600" : "bg-purple-600"
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${message.sender === "bot" ? "bg-blue-600" : "bg-purple-600"
+                  }`}
               >
                 {message.sender === "bot" ? (
                   <Activity className="w-4 h-4" />
@@ -348,18 +379,16 @@ What can I help you with today?`,
 
               {/* Message Content */}
               <div
-                className={`flex-1 ${
-                  message.sender === "user" ? "text-right" : ""
-                }`}
+                className={`flex-1 ${message.sender === "user" ? "text-right" : ""
+                  }`}
               >
                 <div
-                  className={`inline-block p-4 rounded-2xl max-w-full ${
-                    message.sender === "user"
-                      ? "bg-gray-700 text-white"
-                      : message.isError
+                  className={`inline-block p-4 rounded-2xl max-w-full ${message.sender === "user"
+                    ? "bg-gray-700 text-white"
+                    : message.isError
                       ? "bg-red-900/30 border border-red-700 text-red-100"
                       : "bg-gray-800 text-gray-100"
-                  }`}
+                    }`}
                 >
                   {/* Image if present */}
                   {message.image && (
@@ -511,11 +540,10 @@ What can I help you with today?`,
                 <button
                   onClick={handleSend}
                   disabled={isLoading || (!inputText.trim() && !selectedImage)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    inputText.trim() || selectedImage
-                      ? "bg-blue-600 text-white hover:bg-blue-700"
-                      : "bg-gray-700 text-gray-400 cursor-not-allowed"
-                  }`}
+                  className={`p-2 rounded-lg transition-colors ${inputText.trim() || selectedImage
+                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                    : "bg-gray-700 text-gray-400 cursor-not-allowed"
+                    }`}
                 >
                   <Send className="w-5 h-5" />
                 </button>
@@ -535,54 +563,5 @@ What can I help you with today?`,
 
 export default MediBotUI;
 
-// import React from "react";
-// import { UserButton, useUser } from "@clerk/clerk-react";
-// import { Link } from "react-router";
 
-// const Home = () => {
-//   const { user } = useUser();
 
-//   return (
-//     <div className="home-container">
-//       <nav className="navbar">
-//         <div className="nav-brand">
-//           <h2>AI Chat Bot</h2>
-//         </div>
-//         <div className="nav-user">
-//           <span>Welcome, {user?.firstName}!</span>
-//           <UserButton afterSignOutUrl="/login" />
-//         </div>
-//       </nav>
-
-//       <main className="main-content">
-//         <div className="hero-section">
-//           <h1>Welcome to Your Dashboard</h1>
-//           <p>You are successfully logged in!</p>
-//         </div>
-
-//         <div className="content-grid">
-//           <div className="content-card">
-//             <h3>Profile Information</h3>
-//             <p>Name: {user?.fullName}</p>
-//             <p>Email: {user?.primaryEmailAddress?.emailAddress}</p>
-//             <p>User ID: {user?.id}</p>
-//           </div>
-
-//           <div className="content-card">
-//             <h3>Quick Actions</h3>
-//             <div className="action-buttons">
-//               <Link to="/profile" className="action-button">
-//                 View Profile
-//               </Link>
-//               <Link to="/settings" className="action-button">
-//                 Settings
-//               </Link>
-//             </div>
-//           </div>
-//         </div>
-//       </main>
-//     </div>
-//   );
-// };
-
-// export default Home;
